@@ -1,0 +1,74 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+## packages
+
+```{r}
+pacman::p_load(tidyverse, margins, Ecdat)
+```
+
+## functions
+
+```{r}
+get_p_values <- function (pval) {
+  dplyr::case_when(
+    is.na(pval) ~ "", 
+    pval < 0.001 ~ "***", 
+    pval < 0.01 ~ "**", 
+    pval < 0.05 ~ "*", 
+    TRUE ~ "")
+}
+
+```
+
+
+## data
+
+```{r}
+data(Participation)
+```
+
+## logit
+
+```{r}
+mod1 <- glm(lfp ~ ., data = Participation, family = "binomial")
+```
+
+
+## ames
+
+### prep
+
+```{r}
+mod1_ames <- mod1 %>%
+  margins() %>% 
+  summary() %>% 
+  mutate(stars = get_p_values(p)) %>% 
+  mutate(effect_label = paste0(AME %>% round(2), stars))
+
+```
+
+### plot ames
+
+```{r}
+mod1_ames %>% 
+  ggplot(aes(factor, AME)) +
+  geom_point() +
+  geom_linerange(aes(ymin = lower, ymax = upper)) +
+  geom_hline(yintercept = 0) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45)) +
+  coord_flip() +
+  geom_text(aes(label = effect_label), nudge_x = 0.25)
+```
+
+### sjplot
+
+```{r}
+sjPlot::plot_model(mod1, type = "eff", terms = "age")
+
+sjPlot::plot_model(mod1, type = "eff", terms = c("age", "nyc"))
+```
+
